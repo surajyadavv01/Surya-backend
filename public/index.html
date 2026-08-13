@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Blood Bank Management System</title>
+<style>
+  *{ margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+  body{ background: #f4f6fb; color: #1f2937; }
+
+  header{
+    background: linear-gradient(135deg, #b91c1c, #7f1d1d);
+    color:#fff;
+    padding: 22px 30px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  header h1{ font-size: 1.6rem; display:flex; align-items:center; gap:10px; }
+  header p{ font-size: 0.85rem; opacity: 0.85; }
+
+  nav{
+    display:flex; gap: 8px; padding: 14px 30px;
+    background: #fff; border-bottom: 1px solid #e5e7eb; flex-wrap: wrap;
+  }
+  nav button{
+    padding: 9px 18px; border: none; border-radius: 20px;
+    background: #f3f4f6; color: #374151; font-weight: 600;
+    cursor: pointer; font-size: 0.88rem; transition: all 0.2s;
+  }
+  nav button.active{ background: #b91c1c; color: #fff; }
+
+  main{ padding: 26px 30px; max-width: 1100px; margin: 0 auto; }
+
+  .section{ display:none; }
+  .section.active{ display:block; }
+
+  .card{
+    background:#fff; border-radius: 14px; padding: 22px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06); margin-bottom: 20px;
+  }
+  .card h2{ font-size: 1.15rem; margin-bottom: 16px; color: #7f1d1d; }
+
+  .stats-grid{
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px; margin-bottom: 20px;
+  }
+  .stat-box{
+    background: #fff; border-radius: 12px; padding: 18px; text-align:center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 5px solid #b91c1c;
+  }
+  .stat-box .num{ font-size: 1.8rem; font-weight:bold; color: #b91c1c; }
+  .stat-box .label{ font-size: 0.8rem; color: #6b7280; margin-top: 4px; }
+
+  .inventory-grid{
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px;
+  }
+  .blood-tile{ border-radius: 10px; padding: 14px 8px; text-align:center; color:#fff; font-weight:bold; }
+  .blood-tile .grp{ font-size: 1.3rem; }
+  .blood-tile .units{ font-size: 0.85rem; margin-top:4px; opacity:0.9; }
+  .low{ background: linear-gradient(135deg,#ef4444,#b91c1c); }
+  .mid{ background: linear-gradient(135deg,#f59e0b,#d97706); }
+  .high{ background: linear-gradient(135deg,#16a34a,#166534); }
+
+  form{ display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  form .full{ grid-column: 1 / -1; }
+  label{ font-size: 0.82rem; font-weight:600; color:#374151; margin-bottom: 5px; display:block; }
+  input, select{
+    width:100%; padding: 10px 12px; border: 1px solid #d1d5db;
+    border-radius: 8px; font-size: 0.92rem;
+  }
+  input:focus, select:focus{ outline: none; border-color: #b91c1c; }
+
+  .btn{
+    grid-column: 1 / -1; padding: 12px; background: #b91c1c; color:#fff;
+    border:none; border-radius: 8px; font-weight:bold; cursor:pointer;
+    font-size: 0.95rem; transition: background 0.2s;
+  }
+  .btn:hover{ background: #7f1d1d; }
+  .btn:disabled{ background: #9ca3af; cursor: not-allowed; }
+
+  table{ width:100%; border-collapse: collapse; margin-top: 10px; font-size: 0.88rem; }
+  th, td{ padding: 10px 8px; text-align:left; border-bottom: 1px solid #e5e7eb; }
+  th{ background: #fef2f2; color: #7f1d1d; font-size: 0.78rem; text-transform: uppercase; }
+
+  .badge{
+    display:inline-block; padding: 3px 10px; border-radius: 20px;
+    background: #b91c1c; color:#fff; font-size: 0.78rem; font-weight:bold;
+  }
+
+  .empty-msg{ color:#9ca3af; text-align:center; padding: 20px; font-size: 0.9rem; }
+
+  .search-row{ display:flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .search-row select, .search-row input{ flex:1; min-width: 160px; }
+
+  .toast{
+    position: fixed; top: 20px; right: 20px; background: #166534; color:#fff;
+    padding: 12px 20px; border-radius: 8px; font-size: 0.88rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2); opacity: 0;
+    transform: translateY(-10px); transition: all 0.3s; z-index: 100;
+  }
+  .toast.show{ opacity:1; transform: translateY(0); }
+  .toast.error{ background: #b91c1c; }
+
+  @media(max-width:600px){
+    form{ grid-template-columns: 1fr; }
+    header{ padding: 16px; }
+    main{ padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🩸 Smart Blood Bank Management System</h1>
+  <p>Real-time donor & inventory tracking</p>
+</header>
+
+<nav>
+  <button class="active" data-section="dashboard">Dashboard</button>
+  <button data-section="donors">Register Donor</button>
+  <button data-section="search">Search / Request Blood</button>
+  <button data-section="inventory">Manage Inventory</button>
+</nav>
+
+<main>
+
+  <section class="section active" id="dashboard">
+    <div class="stats-grid">
+      <div class="stat-box"><div class="num" id="totalDonors">0</div><div class="label">Total Donors</div></div>
+      <div class="stat-box"><div class="num" id="totalUnits">0</div><div class="label">Total Blood Units</div></div>
+      <div class="stat-box"><div class="num" id="totalRequests">0</div><div class="label">Requests Fulfilled</div></div>
+      <div class="stat-box"><div class="num" id="criticalGroups">0</div><div class="label">Critical Stock Groups</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Blood Stock Overview</h2>
+      <div class="inventory-grid" id="stockOverview"></div>
+    </div>
+
+    <div class="card">
+      <h2>Recent Donors</h2>
+      <table>
+        <thead><tr><th>Name</th><th>Blood Group</th><th>Age</th><th>Contact</th></tr></thead>
+        <tbody id="recentDonorsTable"></tbody>
+      </table>
+      <div class="empty-msg" id="noDonorsMsg">No donors registered yet.</div>
+    </div>
+  </section>
+
+  <section class="section" id="donors">
+    <div class="card">
+      <h2>Register New Donor</h2>
+      <form id="donorForm">
+        <div>
+          <label>Full Name</label>
+          <input type="text" id="dName" required placeholder="e.g. Arjun Mehta">
+        </div>
+        <div>
+          <label>Age</label>
+          <input type="number" id="dAge" min="18" max="65" required placeholder="18 - 65">
+        </div>
+        <div>
+          <label>Blood Group</label>
+          <select id="dGroup" required>
+            <option value="">Select</option>
+            <option>A+</option><option>A-</option>
+            <option>B+</option><option>B-</option>
+            <option>O+</option><option>O-</option>
+            <option>AB+</option><option>AB-</option>
+          </select>
+        </div>
+        <div>
+          <label>Contact Number</label>
+          <input type="tel" id="dContact" required placeholder="10-digit number">
+        </div>
+        <div class="full">
+          <label>City / Address</label>
+          <input type="text" id="dCity" required placeholder="e.g. Noida, UP">
+        </div>
+        <button type="submit" class="btn" id="donorSubmitBtn">Register Donor & Add 1 Unit to Stock</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="section" id="search">
+    <div class="card">
+      <h2>Search Donors by Blood Group</h2>
+      <div class="search-row">
+        <select id="searchGroup">
+          <option value="">All Groups</option>
+          <option>A+</option><option>A-</option>
+          <option>B+</option><option>B-</option>
+          <option>O+</option><option>O-</option>
+          <option>AB+</option><option>AB-</option>
+        </select>
+        <input type="text" id="searchCity" placeholder="Filter by city (optional)">
+      </div>
+      <table>
+        <thead><tr><th>Name</th><th>Group</th><th>Age</th><th>Contact</th><th>City</th></tr></thead>
+        <tbody id="searchResultsTable"></tbody>
+      </table>
+      <div class="empty-msg" id="noSearchMsg">No matching donors found.</div>
+    </div>
+
+    <div class="card">
+      <h2>Request Blood Unit</h2>
+      <form id="requestForm">
+        <div>
+          <label>Patient Name</label>
+          <input type="text" id="rPatient" required placeholder="Patient's name">
+        </div>
+        <div>
+          <label>Blood Group Needed</label>
+          <select id="rGroup" required>
+            <option value="">Select</option>
+            <option>A+</option><option>A-</option>
+            <option>B+</option><option>B-</option>
+            <option>O+</option><option>O-</option>
+            <option>AB+</option><option>AB-</option>
+          </select>
+        </div>
+        <div>
+          <label>Units Required</label>
+          <input type="number" id="rUnits" min="1" value="1" required>
+        </div>
+        <div>
+          <label>Hospital Name</label>
+          <input type="text" id="rHospital" required placeholder="e.g. City Hospital">
+        </div>
+        <button type="submit" class="btn" id="requestSubmitBtn">Submit Request & Deduct Stock</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="section" id="inventory">
+    <div class="card">
+      <h2>Manage Blood Inventory</h2>
+      <table>
+        <thead><tr><th>Blood Group</th><th>Units Available</th><th>Status</th><th>Adjust</th></tr></thead>
+        <tbody id="inventoryTable"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // IMPORTANT: this must match where your backend server is running
+  const API_URL = '/api';
+
+  const bloodGroups = ['A+','A-','B+','B-','O+','O-','AB+','AB-'];
+
+  // ---------- Navigation ----------
+  document.querySelectorAll('nav button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.section).classList.add('active');
+
+      if(btn.dataset.section === 'dashboard') loadDashboard();
+      if(btn.dataset.section === 'search') loadSearch();
+      if(btn.dataset.section === 'inventory') loadInventory();
+    });
+  });
+
+  function showToast(msg, isError=false){
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = 'toast show' + (isError ? ' error' : '');
+    setTimeout(() => toast.classList.remove('show'), 2800);
+  }
+
+  // ---------- Donor Registration ----------
+  document.getElementById('donorForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('donorSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Registering...';
+
+    const donor = {
+      name: document.getElementById('dName').value.trim(),
+      age: document.getElementById('dAge').value,
+      bloodGroup: document.getElementById('dGroup').value,
+      contact: document.getElementById('dContact').value.trim(),
+      city: document.getElementById('dCity').value.trim()
+    };
+
+    try {
+      const res = await fetch(`${API_URL}/donors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(donor)
+      });
+      const data = await res.json();
+
+      if(res.ok){
+        showToast(`${donor.name} registered successfully! +1 unit added to ${donor.bloodGroup} stock.`);
+        e.target.reset();
+      } else {
+        showToast(data.error || 'Something went wrong', true);
+      }
+    } catch (err) {
+      showToast('Could not connect to server. Is the backend running?', true);
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Register Donor & Add 1 Unit to Stock';
+  });
+
+  // ---------- Search ----------
+  document.getElementById('searchGroup').addEventListener('change', loadSearch);
+  document.getElementById('searchCity').addEventListener('input', loadSearch);
+
+  async function loadSearch(){
+    const group = document.getElementById('searchGroup').value;
+    const city = document.getElementById('searchCity').value;
+
+    try {
+      const params = new URLSearchParams();
+      if(group) params.append('bloodGroup', group);
+      if(city) params.append('city', city);
+
+      const res = await fetch(`${API_URL}/donors?${params.toString()}`);
+      const donors = await res.json();
+
+      const tbody = document.getElementById('searchResultsTable');
+      tbody.innerHTML = donors.map(d => `
+        <tr>
+          <td>${d.name}</td>
+          <td><span class="badge">${d.bloodGroup}</span></td>
+          <td>${d.age}</td>
+          <td>${d.contact}</td>
+          <td>${d.city}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('noSearchMsg').style.display = donors.length ? 'none' : 'block';
+    } catch (err) {
+      showToast('Could not load donors. Is the backend running?', true);
+    }
+  }
+
+  // ---------- Request Form ----------
+  document.getElementById('requestForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('requestSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+
+    const request = {
+      patientName: document.getElementById('rPatient').value.trim(),
+      bloodGroup: document.getElementById('rGroup').value,
+      units: parseInt(document.getElementById('rUnits').value),
+      hospital: document.getElementById('rHospital').value.trim()
+    };
+
+    try {
+      const res = await fetch(`${API_URL}/requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request)
+      });
+      const data = await res.json();
+
+      if(res.ok){
+        showToast(`${request.units} unit(s) of ${request.bloodGroup} issued for ${request.patientName}.`);
+        e.target.reset();
+        document.getElementById('rUnits').value = 1;
+      } else {
+        showToast(data.error || 'Request failed', true);
+      }
+    } catch (err) {
+      showToast('Could not connect to server. Is the backend running?', true);
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Submit Request & Deduct Stock';
+  });
+
+  // ---------- Inventory ----------
+  async function loadInventory(){
+    try {
+      const res = await fetch(`${API_URL}/inventory`);
+      const inventory = await res.json();
+
+      const tbody = document.getElementById('inventoryTable');
+      tbody.innerHTML = inventory.map(item => {
+        const units = item.units;
+        const status = units <= 2 ? 'Critical' : units <= 5 ? 'Moderate' : 'Good';
+        const statusColor = units <= 2 ? '#b91c1c' : units <= 5 ? '#d97706' : '#166534';
+        return `
+          <tr>
+            <td><span class="badge">${item.bloodGroup}</span></td>
+            <td>${units}</td>
+            <td style="color:${statusColor}; font-weight:bold;">${status}</td>
+            <td>
+              <button onclick="adjustStock('${item.bloodGroup}', 1)" style="padding:5px 10px; margin-right:5px; border:none; border-radius:6px; background:#166534; color:#fff; cursor:pointer;">+1</button>
+              <button onclick="adjustStock('${item.bloodGroup}', -1)" style="padding:5px 10px; border:none; border-radius:6px; background:#b91c1c; color:#fff; cursor:pointer;">-1</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    } catch (err) {
+      showToast('Could not load inventory. Is the backend running?', true);
+    }
+  }
+
+  async function adjustStock(group, delta){
+    try {
+      await fetch(`${API_URL}/inventory/${group}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ delta })
+      });
+      loadInventory();
+    } catch (err) {
+      showToast('Could not update stock', true);
+    }
+  }
+
+  // ---------- Dashboard ----------
+  async function loadDashboard(){
+    try {
+      const res = await fetch(`${API_URL}/stats`);
+      const stats = await res.json();
+
+      document.getElementById('totalDonors').textContent = stats.totalDonors;
+      document.getElementById('totalUnits').textContent = stats.totalUnits;
+      document.getElementById('totalRequests').textContent = stats.totalRequests;
+      document.getElementById('criticalGroups').textContent = stats.criticalGroups;
+
+      const stockDiv = document.getElementById('stockOverview');
+      stockDiv.innerHTML = stats.inventory.map(item => {
+        const units = item.units;
+        const cls = units <= 2 ? 'low' : units <= 5 ? 'mid' : 'high';
+        return `<div class="blood-tile ${cls}"><div class="grp">${item.bloodGroup}</div><div class="units">${units} units</div></div>`;
+      }).join('');
+
+      const donorsRes = await fetch(`${API_URL}/donors`);
+      const donors = await donorsRes.json();
+
+      const recentTable = document.getElementById('recentDonorsTable');
+      recentTable.innerHTML = donors.slice(0, 5).map(d => `
+        <tr>
+          <td>${d.name}</td>
+          <td><span class="badge">${d.bloodGroup}</span></td>
+          <td>${d.age}</td>
+          <td>${d.contact}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('noDonorsMsg').style.display = donors.length ? 'none' : 'block';
+    } catch (err) {
+      showToast('Could not connect to server. Is the backend running?', true);
+    }
+  }
+
+  // Init
+  loadDashboard();
+</script>
+
+</body>
+</html>

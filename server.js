@@ -10,6 +10,7 @@ const Request = require('./models/Request');
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static('public'));
 
 const bloodGroups = ['A+','A-','B+','B-','O+','O-','AB+','AB-'];
 
